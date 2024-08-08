@@ -165,58 +165,116 @@ int * gera_requisicao(int cliente)
     return req;
 }
 
-int requisicao(int i, int * req)
+int requisicao(int i, int *req)
 {
-    // verifica se req <= ne
+    int j;
 
-    // verifica se req <= disp
+    // Verifica se a requisição é válida (req <= ne[i])
+    for (j = 0; j < m; j++)
+    {
+        if (req[j] > ne[i][j] || req[j] > disp[j])
+        {
+            return 0; // Requisição inválida
+        }
+    }
 
-    // simula a requisicao
+    // Simula a alocação
+    for (j = 0; j < m; j++)
+    {
+        disp[j] -= req[j];
+        aloc[i][j] += req[j];
+        ne[i][j] -= req[j];
+    }
 
-    // testa se o banco esta em estado seguro
-    
-        // retorna verdadeiro se a requisicao eh valida
-
-    // desfaz simulacao (roll back) em caso de requisicao invalida
-
-        // requisicao negada
-        
-    return 0;
+    // Verifica se o sistema ainda está seguro
+    if (seguranca())
+    {
+        return 1; // Requisição aceita
+    }
+    else
+    {
+        // Rollback se o sistema não estiver seguro
+        for (j = 0; j < m; j++)
+        {
+            disp[j] += req[j];
+            aloc[i][j] -= req[j];
+            ne[i][j] += req[j];
+        }
+        return 0; // Requisição negada
+    }
 }
+
+
 
 int seguranca()
 {
     int i, j;
 
-    int ne_menor;
+    int *trab = malloc(m * sizeof(int));
+    int *fim = malloc(n * sizeof(int));
 
-    int * trab = malloc(m * sizeof(int));
-    int * fim = malloc(n * sizeof(int));
+    // Inicializa o vetor de trabalho
+    for (j = 0; j < m; j++)
+    {
+        trab[j] = disp[j];
+    }
 
-    // copia disp para trab
+    // Inicializa o vetor de clientes terminados
+    for (i = 0; i < n; i++)
+    {
+        fim[i] = 0;
+    }
 
-    // iniciando todos de fim como falso
-    
-    // buscando algum cliente que possa acabar
+    int algum_terminou = 1;
 
-        // se o fim eh falso
+    while (algum_terminou)
+    {
+        algum_terminou = 0;
+        for (i = 0; i < n; i++)
+        {
+            if (!fim[i])
+            {
+                // Verifica se o cliente i pode terminar
+                int pode_terminar = 1;
+                for (j = 0; j < m; j++)
+                {
+                    if (ne[i][j] > trab[j])
+                    {
+                        pode_terminar = 0;
+                        break;
+                    }
+                }
+                if (pode_terminar)
+                {
+                    // O cliente pode terminar, libera seus recursos
+                    for (j = 0; j < m; j++)
+                    {
+                        trab[j] += aloc[i][j];
+                    }
+                    fim[i] = 1;
+                    algum_terminou = 1;
+                }
+            }
+        }
+    }
 
-        // se ne <= trab
+    // Verifica se todos os clientes terminaram
+    for (i = 0; i < n; i++)
+    {
+        if (!fim[i])
+        {
+            free(trab);
+            free(fim);
+            return 0; // Estado inseguro
+        }
+    }
 
-            // se ne <= trab, acrescenta seu aloc em trab
-
-            // define que esse cliente pode terminar
-
-    // verifica se todos os clientes terminaram
-        
-        // se algum cliente nao terminou
-            
-            // retorna estado inseguro
-
-        // se todos terminam, retorna estado seguro
-
-    return 1;
+    free(trab);
+    free(fim);
+    return 1; // Estado seguro
 }
+
+
 
 int finaliza_cliente(int i)
 {
@@ -253,12 +311,12 @@ void cliente(void *param_i)
 
     int * req;
     
-    // fica em looping, gerando requisiÃ§Ãµes, atÃ© conseguir todos os recursos
-    // que precisa, quando conseguir todos os recursos, irÃ¡ finalizar
+    // fica em looping, gerando requisições, até conseguir todos os recursos
+    // que precisa, quando conseguir todos os recursos, irá finalizar
     while(executa)
     {
         
-        printf(": Cliente %d gerou a requisiÃ§Ã£o: ",i);
+        printf(": Cliente %d gerou a requisição: ",i);
 
         req = gera_requisicao(i);
 
@@ -271,7 +329,7 @@ void cliente(void *param_i)
         
         printf(": Cliente %d ganhou acesso\n",i);
 
-        // enviando a requisiÃ§Ã£o ao banco
+        // enviando a requisição ao banco
         if ( requisicao(i, req) == 1 )
         {
             printf(": Cliente %d executou sua requisicao\n",i);
