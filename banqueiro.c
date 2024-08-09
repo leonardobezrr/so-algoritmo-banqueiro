@@ -28,6 +28,8 @@ int ** ne;
 
 // threads dos n clientes
 pthread_t * ncli;
+// semáforo global
+sem_t mutex;
 
 // funcoes utilizadas
 
@@ -83,6 +85,8 @@ int main(int argc, char ** argv)
     // num resources
     m = atoi(argv[2]);
 
+    sem_init(&mutex, 0, 1);
+
     // iniciando os recursos
     inicia_recursos();
     
@@ -96,6 +100,8 @@ int main(int argc, char ** argv)
     free(max);
     free(aloc);
     free(ne);
+
+    sem_destroy(&mutex); // destroi o semáforo no final
     
     return 0;
 }
@@ -169,11 +175,14 @@ int requisicao(int i, int *req)
 {
     int j;
 
+    sem_wait(&mutex); // garante acesso exclusivo aos recursos
+
     // Verifica se a requisição é válida (req <= ne[i])
     for (j = 0; j < m; j++)
     {
         if (req[j] > ne[i][j] || req[j] > disp[j])
         {
+            sem_post(&mutex); // libera o semáforo caso a requisição seja inválida
             return 0; // Requisição inválida
         }
     }
@@ -189,6 +198,7 @@ int requisicao(int i, int *req)
     // Verifica se o sistema ainda está seguro
     if (seguranca())
     {
+        sem_post(&mutex); // Libera o semáforo após uma requisição válida
         return 1; // Requisição aceita
     }
     else
@@ -200,6 +210,7 @@ int requisicao(int i, int *req)
             aloc[i][j] -= req[j];
             ne[i][j] += req[j];
         }
+        sem_post(&mutex); // Libera o semáforo após rollback
         return 0; // Requisição negada
     }
 }
